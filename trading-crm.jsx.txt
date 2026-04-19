@@ -1,0 +1,1105 @@
+import { useState, useEffect } from "react";
+
+const MOCK_CLIENTS = [
+  { id: 1, name: "أحمد محمد", phone: "201012345678", status: "active", plan: "VIP", joined: "2024-01-15", meetings: 3, lastContact: "2025-04-17", profit: "+$320" },
+  { id: 2, name: "سارة علي", phone: "201098765432", status: "active", plan: "Pro", joined: "2024-02-20", meetings: 1, lastContact: "2025-04-16", profit: "+$180" },
+  { id: 3, name: "محمود حسن", phone: "201155544433", status: "pending", plan: "Basic", joined: "2024-03-10", meetings: 0, lastContact: "2025-04-14", profit: "$0" },
+  { id: 4, name: "نورا إبراهيم", phone: "201234567890", status: "active", plan: "VIP", joined: "2024-01-28", meetings: 5, lastContact: "2025-04-18", profit: "+$540" },
+  { id: 5, name: "خالد عمر", phone: "201567891234", status: "inactive", plan: "Basic", joined: "2024-04-05", meetings: 2, lastContact: "2025-04-10", profit: "-$40" },
+  { id: 6, name: "ريم ناصر", phone: "201678901234", status: "active", plan: "Pro", joined: "2024-02-14", meetings: 4, lastContact: "2025-04-19", profit: "+$270" },
+];
+
+const MOCK_ANALYSES = [
+  { id: 1, pair: "EUR/USD", direction: "BUY", entry: "1.0820", target: "1.0870", sl: "1.0790", date: "2025-04-19", result: "win", pips: "+50", sent: 42 },
+  { id: 2, pair: "GBP/USD", direction: "SELL", entry: "1.2940", target: "1.2880", sl: "1.2970", date: "2025-04-18", result: "win", pips: "+60", sent: 38 },
+  { id: 3, pair: "XAU/USD", direction: "BUY", entry: "2318", target: "2340", sl: "2305", date: "2025-04-17", result: "lose", pips: "-13", sent: 55 },
+  { id: 4, pair: "USD/JPY", direction: "BUY", entry: "154.20", target: "154.80", sl: "153.90", date: "2025-04-16", result: "win", pips: "+60", sent: 44 },
+  { id: 5, pair: "EUR/USD", direction: "SELL", entry: "1.0850", target: "1.0800", sl: "1.0875", date: "2025-04-15", result: "pending", pips: "—", sent: 61 },
+  { id: 6, pair: "BTC/USD", direction: "BUY", entry: "64200", target: "65000", sl: "63500", date: "2025-04-14", result: "win", pips: "+$800", sent: 29 },
+];
+
+const MOCK_MEETINGS = [
+  { id: 1, client: "أحمد محمد", phone: "201012345678", date: "2025-04-21", time: "10:00", type: "استراتيجية", status: "confirmed", link: "https://meet.google.com/abc" },
+  { id: 2, client: "نورا إبراهيم", phone: "201234567890", date: "2025-04-22", time: "14:00", type: "متابعة", status: "pending", link: "https://meet.google.com/def" },
+  { id: 3, client: "سارة علي", phone: "201098765432", date: "2025-04-23", time: "11:00", type: "تحليل", status: "confirmed", link: "https://meet.google.com/ghi" },
+  { id: 4, client: "ريم ناصر", phone: "201678901234", date: "2025-04-25", time: "16:00", type: "استراتيجية", status: "pending", link: "https://meet.google.com/jkl" },
+];
+
+const MOCK_CONTENT = [
+  { id: 1, title: "كيف تبدأ في الفوركس بـ $100", type: "فيديو", status: "published", views: 1240, date: "2025-04-10" },
+  { id: 2, title: "استراتيجية بريكاوت المتقدمة", type: "مقالة", status: "published", views: 876, date: "2025-04-12" },
+  { id: 3, title: "إدارة رأس المال - الدليل الكامل", type: "PDF", status: "draft", views: 0, date: "2025-04-18" },
+  { id: 4, title: "تحليل EUR/USD الأسبوعي", type: "تحليل", status: "published", views: 2100, date: "2025-04-15" },
+];
+
+const COLORS = {
+  bg: "#0a0d14",
+  card: "#111520",
+  border: "#1e2535",
+  gold: "#f0b429",
+  goldDim: "#8a6615",
+  green: "#22c55e",
+  red: "#ef4444",
+  blue: "#3b82f6",
+  text: "#e2e8f0",
+  muted: "#64748b",
+  accent: "#f0b429",
+};
+
+const styles = {
+  app: {
+    fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
+    background: COLORS.bg,
+    minHeight: "100vh",
+    color: COLORS.text,
+    display: "flex",
+  },
+  sidebar: {
+    width: 220,
+    minHeight: "100vh",
+    background: COLORS.card,
+    borderRight: `1px solid ${COLORS.border}`,
+    padding: "24px 0",
+    display: "flex",
+    flexDirection: "column",
+    position: "fixed",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 100,
+  },
+  logo: {
+    padding: "0 20px 24px",
+    borderBottom: `1px solid ${COLORS.border}`,
+    marginBottom: 16,
+  },
+  logoTitle: {
+    color: COLORS.gold,
+    fontSize: 15,
+    fontWeight: 700,
+    letterSpacing: "0.05em",
+    textTransform: "uppercase",
+  },
+  logoSub: { color: COLORS.muted, fontSize: 10, letterSpacing: "0.1em", marginTop: 2 },
+  navItem: (active) => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "10px 20px",
+    cursor: "pointer",
+    color: active ? COLORS.gold : COLORS.muted,
+    background: active ? "rgba(240,180,41,0.07)" : "transparent",
+    borderLeft: active ? `2px solid ${COLORS.gold}` : "2px solid transparent",
+    fontSize: 12,
+    letterSpacing: "0.05em",
+    transition: "all 0.15s",
+  }),
+  main: {
+    marginLeft: 220,
+    flex: 1,
+    padding: 28,
+    minHeight: "100vh",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 28,
+    paddingBottom: 20,
+    borderBottom: `1px solid ${COLORS.border}`,
+  },
+  pageTitle: { fontSize: 18, fontWeight: 700, color: COLORS.text, letterSpacing: "-0.02em" },
+  pageSubtitle: { fontSize: 11, color: COLORS.muted, marginTop: 3 },
+  grid4: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 16,
+    marginBottom: 24,
+  },
+  grid2: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 16,
+    marginBottom: 24,
+  },
+  card: {
+    background: COLORS.card,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 8,
+    padding: 20,
+  },
+  statValue: { fontSize: 28, fontWeight: 700, color: COLORS.gold, letterSpacing: "-0.03em" },
+  statLabel: { fontSize: 10, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 4 },
+  statChange: (up) => ({ fontSize: 11, color: up ? COLORS.green : COLORS.red, marginTop: 6 }),
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: COLORS.gold,
+    textTransform: "uppercase",
+    letterSpacing: "0.12em",
+    marginBottom: 16,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  table: { width: "100%", borderCollapse: "collapse" },
+  th: {
+    padding: "8px 12px",
+    textAlign: "right",
+    fontSize: 10,
+    color: COLORS.muted,
+    textTransform: "uppercase",
+    letterSpacing: "0.1em",
+    borderBottom: `1px solid ${COLORS.border}`,
+  },
+  td: {
+    padding: "10px 12px",
+    fontSize: 12,
+    borderBottom: `1px solid rgba(30,37,53,0.5)`,
+    verticalAlign: "middle",
+  },
+  badge: (type) => {
+    const map = {
+      active: { bg: "rgba(34,197,94,0.1)", color: COLORS.green },
+      inactive: { bg: "rgba(239,68,68,0.1)", color: COLORS.red },
+      pending: { bg: "rgba(240,180,41,0.1)", color: COLORS.gold },
+      win: { bg: "rgba(34,197,94,0.1)", color: COLORS.green },
+      lose: { bg: "rgba(239,68,68,0.1)", color: COLORS.red },
+      VIP: { bg: "rgba(240,180,41,0.15)", color: COLORS.gold },
+      Pro: { bg: "rgba(59,130,246,0.15)", color: COLORS.blue },
+      Basic: { bg: "rgba(100,116,139,0.15)", color: COLORS.muted },
+      confirmed: { bg: "rgba(34,197,94,0.1)", color: COLORS.green },
+      BUY: { bg: "rgba(34,197,94,0.1)", color: COLORS.green },
+      SELL: { bg: "rgba(239,68,68,0.1)", color: COLORS.red },
+    };
+    const s = map[type] || { bg: "rgba(100,116,139,0.1)", color: COLORS.muted };
+    return {
+      display: "inline-block",
+      padding: "2px 8px",
+      borderRadius: 4,
+      fontSize: 10,
+      fontWeight: 700,
+      background: s.bg,
+      color: s.color,
+      letterSpacing: "0.06em",
+    };
+  },
+  btn: (variant = "primary") => ({
+    padding: "8px 16px",
+    borderRadius: 6,
+    border: "none",
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: "pointer",
+    letterSpacing: "0.06em",
+    fontFamily: "inherit",
+    background: variant === "primary" ? COLORS.gold : variant === "ghost" ? "transparent" : "rgba(240,180,41,0.1)",
+    color: variant === "primary" ? "#000" : COLORS.gold,
+    border: variant === "ghost" ? `1px solid ${COLORS.border}` : "none",
+    transition: "all 0.15s",
+  }),
+  input: {
+    background: COLORS.bg,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 6,
+    padding: "8px 12px",
+    color: COLORS.text,
+    fontSize: 12,
+    fontFamily: "inherit",
+    outline: "none",
+    width: "100%",
+  },
+  select: {
+    background: COLORS.bg,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 6,
+    padding: "8px 12px",
+    color: COLORS.text,
+    fontSize: 12,
+    fontFamily: "inherit",
+    outline: "none",
+  },
+  winBar: (pct) => ({
+    height: 6,
+    background: COLORS.border,
+    borderRadius: 3,
+    overflow: "hidden",
+    marginTop: 8,
+    position: "relative",
+  }),
+  winFill: (pct) => ({
+    height: "100%",
+    width: `${pct}%`,
+    background: `linear-gradient(90deg, ${COLORS.gold}, #ff9500)`,
+    borderRadius: 3,
+    transition: "width 0.6s ease",
+  }),
+  modal: {
+    position: "fixed",
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: "rgba(0,0,0,0.7)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 200,
+    backdropFilter: "blur(4px)",
+  },
+  modalBox: {
+    background: COLORS.card,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 12,
+    padding: 28,
+    width: 480,
+    maxWidth: "90vw",
+    maxHeight: "80vh",
+    overflowY: "auto",
+  },
+};
+
+const NAV = [
+  { id: "overview", label: "الرئيسية", icon: "◈" },
+  { id: "clients", label: "العملاء", icon: "◉" },
+  { id: "analysis", label: "التحليلات", icon: "◈" },
+  { id: "whatsapp", label: "واتساب", icon: "◎" },
+  { id: "meetings", label: "الميتنجات", icon: "◇" },
+  { id: "content", label: "المحتوى", icon: "▣" },
+  { id: "settings", label: "الإعدادات", icon: "◈" },
+];
+
+// ── Stat Card ─────────────────────────────────────────
+function StatCard({ value, label, change, up, color }) {
+  return (
+    <div style={styles.card}>
+      <div style={{ ...styles.statValue, color: color || COLORS.gold }}>{value}</div>
+      <div style={styles.statLabel}>{label}</div>
+      {change && <div style={styles.statChange(up)}>{ up ? "▲" : "▼"} {change}</div>}
+    </div>
+  );
+}
+
+// ── Overview ──────────────────────────────────────────
+function Overview({ clients, analyses }) {
+  const wins = analyses.filter(a => a.result === "win").length;
+  const total = analyses.filter(a => a.result !== "pending").length;
+  const winRate = total ? Math.round((wins / total) * 100) : 0;
+  const active = clients.filter(c => c.status === "active").length;
+
+  return (
+    <div>
+      <div style={styles.grid4}>
+        <StatCard value={clients.length} label="إجمالي العملاء" change="+2 هذا الأسبوع" up={true} />
+        <StatCard value={active} label="عملاء نشطين" color={COLORS.green} />
+        <StatCard value={`${winRate}%`} label="نسبة الإصابة" change="مقارنة بالشهر الماضي 68%" up={winRate > 68} color={winRate >= 70 ? COLORS.green : COLORS.gold} />
+        <StatCard value="$2,840" label="إجمالي أرباح العملاء" change="+$340 هذا الأسبوع" up={true} color={COLORS.green} />
+      </div>
+
+      <div style={styles.grid2}>
+        {/* Recent Analyses */}
+        <div style={styles.card}>
+          <div style={styles.sectionTitle}>◈ آخر التحليلات</div>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>الزوج</th>
+                <th style={styles.th}>الاتجاه</th>
+                <th style={styles.th}>النتيجة</th>
+                <th style={styles.th}>البيبس</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analyses.slice(0, 5).map(a => (
+                <tr key={a.id}>
+                  <td style={{ ...styles.td, color: COLORS.gold, fontWeight: 700 }}>{a.pair}</td>
+                  <td style={styles.td}><span style={styles.badge(a.direction)}>{a.direction}</span></td>
+                  <td style={styles.td}><span style={styles.badge(a.result)}>{a.result === "win" ? "✓ ربح" : a.result === "lose" ? "✗ خسارة" : "⏳ جاري"}</span></td>
+                  <td style={{ ...styles.td, color: a.pips.startsWith("+") ? COLORS.green : a.pips.startsWith("-") ? COLORS.red : COLORS.muted }}>{a.pips}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Win Rate Visual */}
+        <div style={styles.card}>
+          <div style={styles.sectionTitle}>◈ أداء التحليلات</div>
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <div style={{ fontSize: 56, fontWeight: 700, color: winRate >= 70 ? COLORS.green : COLORS.gold, letterSpacing: "-0.04em" }}>{winRate}%</div>
+            <div style={{ color: COLORS.muted, fontSize: 11, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.1em" }}>نسبة الإصابة الإجمالية</div>
+            <div style={styles.winBar(winRate)}><div style={styles.winFill(winRate)} /></div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, gap: 8 }}>
+              <div style={{ flex: 1, background: "rgba(34,197,94,0.1)", borderRadius: 6, padding: "10px 0" }}>
+                <div style={{ color: COLORS.green, fontSize: 22, fontWeight: 700 }}>{wins}</div>
+                <div style={{ color: COLORS.muted, fontSize: 10, marginTop: 2 }}>ربح</div>
+              </div>
+              <div style={{ flex: 1, background: "rgba(239,68,68,0.1)", borderRadius: 6, padding: "10px 0" }}>
+                <div style={{ color: COLORS.red, fontSize: 22, fontWeight: 700 }}>{analyses.filter(a => a.result === "lose").length}</div>
+                <div style={{ color: COLORS.muted, fontSize: 10, marginTop: 2 }}>خسارة</div>
+              </div>
+              <div style={{ flex: 1, background: "rgba(240,180,41,0.1)", borderRadius: 6, padding: "10px 0" }}>
+                <div style={{ color: COLORS.gold, fontSize: 22, fontWeight: 700 }}>{analyses.filter(a => a.result === "pending").length}</div>
+                <div style={{ color: COLORS.muted, fontSize: 10, marginTop: 2 }}>جاري</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Upcoming Meetings strip */}
+      <div style={styles.card}>
+        <div style={styles.sectionTitle}>◇ ميتنجات اليوم</div>
+        <div style={{ display: "flex", gap: 12 }}>
+          {MOCK_MEETINGS.filter(m => m.status === "confirmed").map(m => (
+            <div key={m.id} style={{ flex: 1, background: "rgba(240,180,41,0.05)", border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: 14 }}>
+              <div style={{ color: COLORS.gold, fontWeight: 700, fontSize: 12 }}>{m.client}</div>
+              <div style={{ color: COLORS.muted, fontSize: 11, marginTop: 4 }}>{m.date} — {m.time}</div>
+              <div style={{ color: COLORS.text, fontSize: 11, marginTop: 2 }}>{m.type}</div>
+              <span style={{ ...styles.badge("confirmed"), marginTop: 6 }}>مؤكد</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Clients ───────────────────────────────────────────
+function Clients({ clients, setClients }) {
+  const [search, setSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [newClient, setNewClient] = useState({ name: "", phone: "", plan: "Basic" });
+  const [toast, setToast] = useState("");
+
+  const filtered = clients.filter(c =>
+    c.name.includes(search) || c.phone.includes(search)
+  );
+
+  function addClient() {
+    if (!newClient.name || !newClient.phone) return;
+    const c = { ...newClient, id: Date.now(), status: "active", joined: new Date().toISOString().split("T")[0], meetings: 0, lastContact: new Date().toISOString().split("T")[0], profit: "$0" };
+    setClients(prev => [c, ...prev]);
+    setShowAdd(false);
+    setNewClient({ name: "", phone: "", plan: "Basic" });
+    showToast("تم إضافة العميل بنجاح ✓");
+  }
+
+  function showToast(msg) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  }
+
+  function sendWA(phone, name) {
+    const msg = encodeURIComponent(`مرحباً ${name}! 👋\nمتابعة من فريق التداول - هل تحتاج أي مساعدة؟`);
+    window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+  }
+
+  return (
+    <div>
+      {toast && (
+        <div style={{ position: "fixed", top: 20, right: 20, background: COLORS.green, color: "#000", padding: "10px 20px", borderRadius: 8, fontSize: 12, fontWeight: 700, zIndex: 999 }}>
+          {toast}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, alignItems: "center" }}>
+        <input style={{ ...styles.input, width: 260 }} placeholder="🔍 ابحث بالاسم أو الرقم..." value={search} onChange={e => setSearch(e.target.value)} />
+        <button style={styles.btn("primary")} onClick={() => setShowAdd(true)}>+ إضافة عميل</button>
+        <div style={{ marginRight: "auto", color: COLORS.muted, fontSize: 11 }}>{filtered.length} عميل</div>
+      </div>
+
+      <div style={styles.card}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>الاسم</th>
+              <th style={styles.th}>الهاتف</th>
+              <th style={styles.th}>الباقة</th>
+              <th style={styles.th}>الحالة</th>
+              <th style={styles.th}>الميتنجات</th>
+              <th style={styles.th}>الأرباح</th>
+              <th style={styles.th}>آخر تواصل</th>
+              <th style={styles.th}>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(c => (
+              <tr key={c.id} style={{ transition: "background 0.1s" }}>
+                <td style={{ ...styles.td, fontWeight: 700 }}>{c.name}</td>
+                <td style={{ ...styles.td, color: COLORS.muted, direction: "ltr" }}>{c.phone}</td>
+                <td style={styles.td}><span style={styles.badge(c.plan)}>{c.plan}</span></td>
+                <td style={styles.td}><span style={styles.badge(c.status)}>{c.status === "active" ? "نشط" : c.status === "inactive" ? "غير نشط" : "معلق"}</span></td>
+                <td style={{ ...styles.td, color: COLORS.gold, textAlign: "center" }}>{c.meetings}</td>
+                <td style={{ ...styles.td, color: c.profit.startsWith("+") ? COLORS.green : c.profit.startsWith("-") ? COLORS.red : COLORS.muted }}>{c.profit}</td>
+                <td style={{ ...styles.td, color: COLORS.muted, fontSize: 11 }}>{c.lastContact}</td>
+                <td style={styles.td}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => sendWA(c.phone, c.name)} style={{ ...styles.btn("secondary"), padding: "4px 10px", fontSize: 10 }}>واتساب</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {showAdd && (
+        <div style={styles.modal} onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
+          <div style={styles.modalBox}>
+            <div style={{ ...styles.sectionTitle, marginBottom: 20 }}>+ إضافة عميل جديد</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>الاسم الكامل</div>
+                <input style={styles.input} value={newClient.name} onChange={e => setNewClient({ ...newClient, name: e.target.value })} placeholder="محمد أحمد" />
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>رقم الواتساب</div>
+                <input style={styles.input} value={newClient.phone} onChange={e => setNewClient({ ...newClient, phone: e.target.value })} placeholder="201012345678" dir="ltr" />
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>الباقة</div>
+                <select style={{ ...styles.select, width: "100%" }} value={newClient.plan} onChange={e => setNewClient({ ...newClient, plan: e.target.value })}>
+                  <option value="Basic">Basic</option>
+                  <option value="Pro">Pro</option>
+                  <option value="VIP">VIP</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                <button style={styles.btn("primary")} onClick={addClient}>حفظ العميل</button>
+                <button style={styles.btn("ghost")} onClick={() => setShowAdd(false)}>إلغاء</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Analysis ──────────────────────────────────────────
+function Analysis({ analyses, setAnalyses }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [updating, setUpdating] = useState(null);
+  const [newA, setNewA] = useState({ pair: "EUR/USD", direction: "BUY", entry: "", target: "", sl: "" });
+  const [toast, setToast] = useState("");
+
+  function addAnalysis() {
+    if (!newA.entry || !newA.target || !newA.sl) return;
+    const a = { ...newA, id: Date.now(), date: new Date().toISOString().split("T")[0], result: "pending", pips: "—", sent: 0 };
+    setAnalyses(prev => [a, ...prev]);
+    setShowAdd(false);
+    showToast("تم إضافة التحليل ✓");
+  }
+
+  function updateResult(id, result, pips) {
+    setAnalyses(prev => prev.map(a => a.id === id ? { ...a, result, pips } : a));
+    setUpdating(null);
+    showToast("تم تحديث النتيجة ✓");
+  }
+
+  function showToast(msg) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
+  }
+
+  const wins = analyses.filter(a => a.result === "win").length;
+  const done = analyses.filter(a => a.result !== "pending").length;
+
+  return (
+    <div>
+      {toast && (
+        <div style={{ position: "fixed", top: 20, right: 20, background: COLORS.green, color: "#000", padding: "10px 20px", borderRadius: 8, fontSize: 12, fontWeight: 700, zIndex: 999 }}>
+          {toast}
+        </div>
+      )}
+
+      <div style={styles.grid4}>
+        <StatCard value={analyses.length} label="إجمالي التحليلات" />
+        <StatCard value={wins} label="تحليلات رابحة" color={COLORS.green} />
+        <StatCard value={analyses.filter(a => a.result === "lose").length} label="تحليلات خاسرة" color={COLORS.red} />
+        <StatCard value={done ? `${Math.round(wins / done * 100)}%` : "—"} label="نسبة الإصابة" color={COLORS.gold} />
+      </div>
+
+      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+        <button style={styles.btn("primary")} onClick={() => setShowAdd(true)}>+ تحليل جديد</button>
+      </div>
+
+      <div style={styles.card}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>التاريخ</th>
+              <th style={styles.th}>الزوج</th>
+              <th style={styles.th}>الاتجاه</th>
+              <th style={styles.th}>الدخول</th>
+              <th style={styles.th}>الهدف</th>
+              <th style={styles.th}>وقف الخسارة</th>
+              <th style={styles.th}>النتيجة</th>
+              <th style={styles.th}>البيبس</th>
+              <th style={styles.th}>أُرسل لـ</th>
+              <th style={styles.th}>تحديث</th>
+            </tr>
+          </thead>
+          <tbody>
+            {analyses.map(a => (
+              <tr key={a.id}>
+                <td style={{ ...styles.td, color: COLORS.muted, fontSize: 10 }}>{a.date}</td>
+                <td style={{ ...styles.td, color: COLORS.gold, fontWeight: 700 }}>{a.pair}</td>
+                <td style={styles.td}><span style={styles.badge(a.direction)}>{a.direction}</span></td>
+                <td style={{ ...styles.td, direction: "ltr" }}>{a.entry}</td>
+                <td style={{ ...styles.td, color: COLORS.green, direction: "ltr" }}>{a.target}</td>
+                <td style={{ ...styles.td, color: COLORS.red, direction: "ltr" }}>{a.sl}</td>
+                <td style={styles.td}><span style={styles.badge(a.result)}>{a.result === "win" ? "✓ ربح" : a.result === "lose" ? "✗ خسارة" : "⏳ جاري"}</span></td>
+                <td style={{ ...styles.td, color: a.pips?.startsWith("+") ? COLORS.green : a.pips?.startsWith("-") ? COLORS.red : COLORS.muted }}>{a.pips}</td>
+                <td style={{ ...styles.td, color: COLORS.muted, textAlign: "center" }}>{a.sent}</td>
+                <td style={styles.td}>
+                  {a.result === "pending" && (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button onClick={() => updateResult(a.id, "win", "+50")} style={{ ...styles.btn("secondary"), padding: "3px 8px", fontSize: 9, background: "rgba(34,197,94,0.15)", color: COLORS.green }}>✓ ربح</button>
+                      <button onClick={() => updateResult(a.id, "lose", "-" + Math.abs(parseInt(a.entry) - parseInt(a.sl)))} style={{ ...styles.btn("secondary"), padding: "3px 8px", fontSize: 9, background: "rgba(239,68,68,0.15)", color: COLORS.red }}>✗ خسارة</button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {showAdd && (
+        <div style={styles.modal} onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
+          <div style={styles.modalBox}>
+            <div style={{ ...styles.sectionTitle, marginBottom: 20 }}>◈ تحليل جديد</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              {[["الزوج", "pair", "EUR/USD"], ["الاتجاه", "direction", null], ["سعر الدخول", "entry", "1.0820"], ["الهدف", "target", "1.0870"], ["وقف الخسارة", "sl", "1.0790"]].map(([label, key, placeholder]) => (
+                <div key={key}>
+                  <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>{label}</div>
+                  {key === "direction" ? (
+                    <select style={{ ...styles.select, width: "100%" }} value={newA[key]} onChange={e => setNewA({ ...newA, [key]: e.target.value })}>
+                      <option value="BUY">BUY — شراء</option>
+                      <option value="SELL">SELL — بيع</option>
+                    </select>
+                  ) : (
+                    <input style={styles.input} placeholder={placeholder} value={newA[key]} onChange={e => setNewA({ ...newA, [key]: e.target.value })} dir="ltr" />
+                  )}
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              <button style={styles.btn("primary")} onClick={addAnalysis}>حفظ التحليل</button>
+              <button style={styles.btn("ghost")} onClick={() => setShowAdd(false)}>إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── WhatsApp ──────────────────────────────────────────
+function WhatsApp({ clients }) {
+  const [selectedClients, setSelectedClients] = useState([]);
+  const [message, setMessage] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [toast, setToast] = useState("");
+  const [templates] = useState([
+    { label: "متابعة عامة", text: "مرحباً {اسم} 👋\nكيف الحال؟ هل لديك أي استفسار عن التحليلات؟" },
+    { label: "تحليل جديد", text: "مرحباً {اسم} 🎯\nتحليل جديد متاح الآن!\nادخل لمنصتنا لمشاهدة التفاصيل." },
+    { label: "تذكير ميتنج", text: "مرحباً {اسم} 📅\nتذكير: لديك ميتنج معنا غداً.\nموعد: {الوقت}\nرابط: {الرابط}" },
+    { label: "نتيجة تحليل", text: "مرحباً {اسم} ✅\nالتحليل الأخير أصاب الهدف!\nالأرباح: +50 بيب 🎉" },
+  ]);
+
+  const filteredClients = clients.filter(c =>
+    filter === "all" ? true : c.plan === filter || c.status === filter
+  );
+
+  function toggleClient(id) {
+    setSelectedClients(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  }
+
+  function selectAll() {
+    setSelectedClients(filteredClients.map(c => c.id));
+  }
+
+  function sendBulk() {
+    if (!message || selectedClients.length === 0) return;
+    const selected = clients.filter(c => selectedClients.includes(c.id));
+    // Open WA for first client as demo
+    const first = selected[0];
+    const msg = encodeURIComponent(message.replace("{اسم}", first.name));
+    window.open(`https://wa.me/${first.phone}?text=${msg}`, "_blank");
+    setToast(`تم فتح واتساب لـ ${selected.length} عميل ✓`);
+    setTimeout(() => setToast(""), 3000);
+  }
+
+  return (
+    <div>
+      {toast && (
+        <div style={{ position: "fixed", top: 20, right: 20, background: COLORS.green, color: "#000", padding: "10px 20px", borderRadius: 8, fontSize: 12, fontWeight: 700, zIndex: 999 }}>
+          {toast}
+        </div>
+      )}
+
+      <div style={styles.grid2}>
+        {/* Left: Client Selector */}
+        <div style={styles.card}>
+          <div style={styles.sectionTitle}>◉ اختار العملاء</div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            {["all", "VIP", "Pro", "Basic", "active"].map(f => (
+              <button key={f} onClick={() => setFilter(f)} style={{ ...styles.btn(filter === f ? "primary" : "ghost"), padding: "4px 12px", fontSize: 10 }}>
+                {f === "all" ? "الكل" : f}
+              </button>
+            ))}
+          </div>
+          <button onClick={selectAll} style={{ ...styles.btn("secondary"), marginBottom: 12, fontSize: 10 }}>تحديد الكل ({filteredClients.length})</button>
+          <div style={{ maxHeight: 320, overflowY: "auto" }}>
+            {filteredClients.map(c => (
+              <div
+                key={c.id}
+                onClick={() => toggleClient(c.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  marginBottom: 4,
+                  background: selectedClients.includes(c.id) ? "rgba(240,180,41,0.08)" : "transparent",
+                  border: `1px solid ${selectedClients.includes(c.id) ? COLORS.goldDim : "transparent"}`,
+                  transition: "all 0.1s",
+                }}
+              >
+                <div style={{
+                  width: 16, height: 16, borderRadius: 3,
+                  border: `1.5px solid ${selectedClients.includes(c.id) ? COLORS.gold : COLORS.border}`,
+                  background: selectedClients.includes(c.id) ? COLORS.gold : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 9, color: "#000",
+                }}>
+                  {selectedClients.includes(c.id) ? "✓" : ""}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600 }}>{c.name}</div>
+                  <div style={{ fontSize: 10, color: COLORS.muted, direction: "ltr" }}>{c.phone}</div>
+                </div>
+                <span style={styles.badge(c.plan)}>{c.plan}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 12, color: COLORS.gold, fontSize: 11 }}>
+            {selectedClients.length} عميل محدد
+          </div>
+        </div>
+
+        {/* Right: Message Composer */}
+        <div style={styles.card}>
+          <div style={styles.sectionTitle}>◎ كتابة الرسالة</div>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 8, textTransform: "uppercase" }}>قوالب جاهزة</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {templates.map((t, i) => (
+                <button key={i} onClick={() => setMessage(t.text)} style={{ ...styles.btn("secondary"), textAlign: "right", fontSize: 11, padding: "8px 12px" }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>نص الرسالة</div>
+          <textarea
+            style={{ ...styles.input, minHeight: 130, resize: "vertical", lineHeight: 1.6 }}
+            placeholder="اكتب رسالتك هنا...&#10;استخدم {اسم} لاسم العميل"
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+          />
+          <div style={{ fontSize: 10, color: COLORS.muted, marginTop: 6, marginBottom: 14 }}>
+            المتغيرات: {"{اسم}"} {"{الوقت}"} {"{الرابط}"}
+          </div>
+
+          {message && (
+            <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
+              <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 8 }}>معاينة:</div>
+              <div style={{ fontSize: 12, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+                {message.replace("{اسم}", selectedClients.length > 0 ? clients.find(c => c.id === selectedClients[0])?.name || "العميل" : "العميل")}
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={sendBulk}
+            disabled={!message || selectedClients.length === 0}
+            style={{
+              ...styles.btn("primary"),
+              width: "100%",
+              padding: "12px",
+              opacity: (!message || selectedClients.length === 0) ? 0.4 : 1,
+              fontSize: 13,
+            }}
+          >
+            إرسال عبر واتساب ({selectedClients.length})
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Meetings ──────────────────────────────────────────
+function Meetings({ meetings, setMeetings, clients }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [newM, setNewM] = useState({ client: "", phone: "", date: "", time: "", type: "استراتيجية", link: "" });
+  const [toast, setToast] = useState("");
+
+  function addMeeting() {
+    const m = { ...newM, id: Date.now(), status: "pending" };
+    setMeetings(prev => [...prev, m]);
+    setShowAdd(false);
+    showToast("تم إضافة الميتنج ✓");
+  }
+
+  function sendWAMeeting(m) {
+    const msg = encodeURIComponent(
+      `مرحباً ${m.client} 📅\n\nتذكير بموعد الميتنج:\n📆 التاريخ: ${m.date}\n⏰ الوقت: ${m.time}\n📋 النوع: ${m.type}\n\n🔗 الرابط: ${m.link || "سيتم إرساله قريباً"}\n\nنراك قريباً! 🚀`
+    );
+    window.open(`https://wa.me/${m.phone}?text=${msg}`, "_blank");
+    showToast("تم فتح واتساب ✓");
+  }
+
+  function confirmMeeting(id) {
+    setMeetings(prev => prev.map(m => m.id === id ? { ...m, status: "confirmed" } : m));
+  }
+
+  function showToast(msg) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
+  }
+
+  const upcoming = meetings.filter(m => m.status !== "cancelled");
+
+  return (
+    <div>
+      {toast && (
+        <div style={{ position: "fixed", top: 20, right: 20, background: COLORS.green, color: "#000", padding: "10px 20px", borderRadius: 8, fontSize: 12, fontWeight: 700, zIndex: 999 }}>
+          {toast}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+        <button style={styles.btn("primary")} onClick={() => setShowAdd(true)}>+ ميتنج جديد</button>
+      </div>
+
+      <div style={styles.card}>
+        <div style={styles.sectionTitle}>◇ جدول الميتنجات</div>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>العميل</th>
+              <th style={styles.th}>التاريخ</th>
+              <th style={styles.th}>الوقت</th>
+              <th style={styles.th}>النوع</th>
+              <th style={styles.th}>الحالة</th>
+              <th style={styles.th}>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {upcoming.map(m => (
+              <tr key={m.id}>
+                <td style={{ ...styles.td, fontWeight: 700 }}>{m.client}</td>
+                <td style={{ ...styles.td, color: COLORS.gold }}>{m.date}</td>
+                <td style={{ ...styles.td, direction: "ltr" }}>{m.time}</td>
+                <td style={styles.td}>{m.type}</td>
+                <td style={styles.td}><span style={styles.badge(m.status)}>{m.status === "confirmed" ? "✓ مؤكد" : "⏳ معلق"}</span></td>
+                <td style={styles.td}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => sendWAMeeting(m)} style={{ ...styles.btn("secondary"), padding: "4px 10px", fontSize: 10 }}>📱 واتساب</button>
+                    {m.status === "pending" && (
+                      <button onClick={() => confirmMeeting(m.id)} style={{ ...styles.btn("secondary"), padding: "4px 10px", fontSize: 10, background: "rgba(34,197,94,0.1)", color: COLORS.green }}>تأكيد</button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {showAdd && (
+        <div style={styles.modal} onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
+          <div style={styles.modalBox}>
+            <div style={{ ...styles.sectionTitle, marginBottom: 20 }}>◇ ميتنج جديد</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>اختر العميل</div>
+                <select
+                  style={{ ...styles.select, width: "100%" }}
+                  value={newM.client}
+                  onChange={e => {
+                    const c = clients.find(x => x.name === e.target.value);
+                    setNewM({ ...newM, client: e.target.value, phone: c?.phone || "" });
+                  }}
+                >
+                  <option value="">— اختر —</option>
+                  {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div>
+                  <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>التاريخ</div>
+                  <input type="date" style={styles.input} value={newM.date} onChange={e => setNewM({ ...newM, date: e.target.value })} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>الوقت</div>
+                  <input type="time" style={styles.input} value={newM.time} onChange={e => setNewM({ ...newM, time: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>نوع الميتنج</div>
+                <select style={{ ...styles.select, width: "100%" }} value={newM.type} onChange={e => setNewM({ ...newM, type: e.target.value })}>
+                  <option>استراتيجية</option>
+                  <option>متابعة</option>
+                  <option>تحليل</option>
+                  <option>تعليمي</option>
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>رابط الاجتماع</div>
+                <input style={styles.input} placeholder="https://meet.google.com/..." value={newM.link} onChange={e => setNewM({ ...newM, link: e.target.value })} dir="ltr" />
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                <button style={styles.btn("primary")} onClick={addMeeting}>حفظ الميتنج</button>
+                <button style={styles.btn("ghost")} onClick={() => setShowAdd(false)}>إلغاء</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Content ───────────────────────────────────────────
+function Content() {
+  const [items, setItems] = useState(MOCK_CONTENT);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newC, setNewC] = useState({ title: "", type: "فيديو", status: "draft" });
+
+  function add() {
+    if (!newC.title) return;
+    setItems(prev => [{ ...newC, id: Date.now(), views: 0, date: new Date().toISOString().split("T")[0] }, ...prev]);
+    setShowAdd(false);
+    setNewC({ title: "", type: "فيديو", status: "draft" });
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16 }}>
+        <button style={styles.btn("primary")} onClick={() => setShowAdd(true)}>+ محتوى جديد</button>
+      </div>
+      <div style={styles.card}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>العنوان</th>
+              <th style={styles.th}>النوع</th>
+              <th style={styles.th}>الحالة</th>
+              <th style={styles.th}>المشاهدات</th>
+              <th style={styles.th}>التاريخ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map(c => (
+              <tr key={c.id}>
+                <td style={{ ...styles.td, fontWeight: 600 }}>{c.title}</td>
+                <td style={styles.td}><span style={styles.badge("Basic")}>{c.type}</span></td>
+                <td style={styles.td}><span style={styles.badge(c.status === "published" ? "active" : "pending")}>{c.status === "published" ? "منشور" : "مسودة"}</span></td>
+                <td style={{ ...styles.td, color: COLORS.gold, textAlign: "center" }}>{c.views.toLocaleString()}</td>
+                <td style={{ ...styles.td, color: COLORS.muted, fontSize: 11 }}>{c.date}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {showAdd && (
+        <div style={styles.modal} onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
+          <div style={styles.modalBox}>
+            <div style={{ ...styles.sectionTitle, marginBottom: 20 }}>▣ محتوى جديد</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>العنوان</div>
+                <input style={styles.input} value={newC.title} onChange={e => setNewC({ ...newC, title: e.target.value })} placeholder="عنوان المحتوى" />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>النوع</div>
+                  <select style={{ ...styles.select, width: "100%" }} value={newC.type} onChange={e => setNewC({ ...newC, type: e.target.value })}>
+                    <option>فيديو</option><option>مقالة</option><option>PDF</option><option>تحليل</option>
+                  </select>
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>الحالة</div>
+                  <select style={{ ...styles.select, width: "100%" }} value={newC.status} onChange={e => setNewC({ ...newC, status: e.target.value })}>
+                    <option value="draft">مسودة</option><option value="published">منشور</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                <button style={styles.btn("primary")} onClick={add}>حفظ</button>
+                <button style={styles.btn("ghost")} onClick={() => setShowAdd(false)}>إلغاء</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Settings ──────────────────────────────────────────
+function Settings() {
+  const [settings, setSettings] = useState({
+    companyName: "FX Pro Academy",
+    phone: "201000000000",
+    welcomeMsg: "مرحباً بك في أكاديمية FX Pro! 🎯",
+    autoFollow: true,
+    followDays: "3",
+    currency: "USD",
+  });
+  const [saved, setSaved] = useState(false);
+
+  function save() {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  return (
+    <div>
+      <div style={styles.card}>
+        <div style={styles.sectionTitle}>◈ إعدادات الشركة</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {[["اسم الشركة", "companyName"], ["رقم واتساب الشركة", "phone"]].map(([label, key]) => (
+            <div key={key}>
+              <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>{label}</div>
+              <input style={styles.input} value={settings[key]} onChange={e => setSettings({ ...settings, [key]: e.target.value })} />
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>رسالة الترحيب الافتراضية</div>
+          <textarea style={{ ...styles.input, minHeight: 80 }} value={settings.welcomeMsg} onChange={e => setSettings({ ...settings, welcomeMsg: e.target.value })} />
+        </div>
+      </div>
+
+      <div style={{ ...styles.card, marginTop: 16 }}>
+        <div style={styles.sectionTitle}>◎ إعدادات المتابعة التلقائية</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <div
+            onClick={() => setSettings(s => ({ ...s, autoFollow: !s.autoFollow }))}
+            style={{
+              width: 44, height: 24, borderRadius: 12,
+              background: settings.autoFollow ? COLORS.gold : COLORS.border,
+              cursor: "pointer", position: "relative", transition: "background 0.2s",
+            }}
+          >
+            <div style={{
+              width: 18, height: 18, borderRadius: "50%", background: "#fff",
+              position: "absolute", top: 3,
+              left: settings.autoFollow ? "calc(100% - 21px)" : 3,
+              transition: "left 0.2s",
+            }} />
+          </div>
+          <span style={{ fontSize: 12 }}>متابعة تلقائية مع العملاء</span>
+        </div>
+        {settings.autoFollow && (
+          <div>
+            <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 6, textTransform: "uppercase" }}>المتابعة كل (أيام)</div>
+            <input style={{ ...styles.input, width: 100 }} value={settings.followDays} onChange={e => setSettings({ ...settings, followDays: e.target.value })} type="number" />
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginTop: 20 }}>
+        <button style={styles.btn("primary")} onClick={save}>
+          {saved ? "✓ تم الحفظ" : "حفظ الإعدادات"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── App Shell ─────────────────────────────────────────
+export default function App() {
+  const [tab, setTab] = useState("overview");
+  const [clients, setClients] = useState(MOCK_CLIENTS);
+  const [analyses, setAnalyses] = useState(MOCK_ANALYSES);
+  const [meetings, setMeetings] = useState(MOCK_MEETINGS);
+
+  const PAGE_LABELS = {
+    overview: { title: "لوحة التحكم", sub: "نظرة عامة على أداء الشركة" },
+    clients: { title: "إدارة العملاء", sub: `${clients.length} عميل مسجل` },
+    analysis: { title: "التحليلات والتوصيات", sub: "إدارة وتتبع دقة التحليلات" },
+    whatsapp: { title: "إرسال واتساب", sub: "رسائل مجمعة للعملاء" },
+    meetings: { title: "الميتنجات", sub: "جدولة وإدارة الاجتماعات" },
+    content: { title: "المحتوى التعليمي", sub: "إدارة محتوى الأكاديمية" },
+    settings: { title: "الإعدادات", sub: "ضبط إعدادات النظام" },
+  };
+
+  return (
+    <div style={{ ...styles.app, direction: "rtl" }}>
+      {/* Google Font */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0a0d14; }
+        ::-webkit-scrollbar-thumb { background: #1e2535; border-radius: 2px; }
+        textarea { resize: vertical; }
+        select option { background: #111520; color: #e2e8f0; }
+        tr:hover td { background: rgba(240,180,41,0.02); }
+      `}</style>
+
+      {/* Sidebar */}
+      <div style={styles.sidebar}>
+        <div style={styles.logo}>
+          <div style={styles.logoTitle}>FX Pro CRM</div>
+          <div style={styles.logoSub}>نظام إدارة العملاء</div>
+        </div>
+        {NAV.map(n => (
+          <div key={n.id} style={styles.navItem(tab === n.id)} onClick={() => setTab(n.id)}>
+            <span style={{ fontSize: 14 }}>{n.icon}</span>
+            <span>{n.label}</span>
+          </div>
+        ))}
+        <div style={{ marginTop: "auto", padding: "20px", borderTop: `1px solid ${COLORS.border}` }}>
+          <div style={{ fontSize: 10, color: COLORS.muted }}>الإصدار 1.0.0</div>
+          <div style={{ fontSize: 10, color: COLORS.goldDim, marginTop: 2 }}>FX Pro Academy</div>
+        </div>
+      </div>
+
+      {/* Main */}
+      <div style={styles.main}>
+        <div style={styles.header}>
+          <div>
+            <div style={styles.pageTitle}>{PAGE_LABELS[tab]?.title}</div>
+            <div style={styles.pageSubtitle}>{PAGE_LABELS[tab]?.sub}</div>
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <div style={{ fontSize: 11, color: COLORS.muted }}>
+              {new Date().toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            </div>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: COLORS.gold, display: "flex", alignItems: "center", justifyContent: "center", color: "#000", fontSize: 12, fontWeight: 700 }}>
+              A
+            </div>
+          </div>
+        </div>
+
+        {tab === "overview" && <Overview clients={clients} analyses={analyses} />}
+        {tab === "clients" && <Clients clients={clients} setClients={setClients} />}
+        {tab === "analysis" && <Analysis analyses={analyses} setAnalyses={setAnalyses} />}
+        {tab === "whatsapp" && <WhatsApp clients={clients} />}
+        {tab === "meetings" && <Meetings meetings={meetings} setMeetings={setMeetings} clients={clients} />}
+        {tab === "content" && <Content />}
+        {tab === "settings" && <Settings />}
+      </div>
+    </div>
+  );
+}
